@@ -1,9 +1,9 @@
 import streamlit as st
 from itertools import combinations
 
-st.set_page_config(page_title="IPL Team Builder", layout="wide")
+st.set_page_config(page_title="Pro Fantasy Portal", layout="wide")
 
-# --- SAVED SQUADS DATABASE ---
+# --- UPDATED SQUADS DATA ---
 SQUADS = {
     "PBKS": [
         {"name": "Prabhsimran Singh", "role": "WK"}, {"name": "Vishnu Vinod", "role": "WK"},
@@ -24,45 +24,57 @@ SQUADS = {
     ]
 }
 
-st.title("🏏 Smart Fantasy Portal")
+st.title("🏏 Side-by-Side Player Selector")
 
-# --- STEP 1: SELECT TEAMS ---
-st.sidebar.header("Match Selection")
-team1 = st.sidebar.selectbox("Select Team 1", ["PBKS"])
-team2 = st.sidebar.selectbox("Select Team 2", ["RR"])
+# --- SIDEBAR SELECTION ---
+st.sidebar.header("Match Setup")
+team1_name = st.sidebar.selectbox("Team 1", ["PBKS"])
+team2_name = st.sidebar.selectbox("Team 2", ["RR"])
 
-# Combine the players from both selected teams
-match_players = []
-for p in SQUADS[team1]:
-    match_players.append({"name": p['name'], "team": team1, "role": p['role']})
-for p in SQUADS[team2]:
-    match_players.append({"name": p['name'], "team": team2, "role": p['role']})
+# --- MAIN SELECTION GRID ---
+st.subheader("Step 1: Pick your shortlist from both squads")
+col1, col2 = st.columns(2)
 
-# --- STEP 2: SHORTLIST ---
-st.header(f"Shortlist Players: {team1} vs {team2}")
-player_names = [f"{p['name']} ({p['team']} - {p['role']})" for p in match_players]
+shortlist = []
 
-selected_display_names = st.multiselect("Pick players you think will perform:", player_names)
+with col1:
+    st.markdown(f"### {team1_name}")
+    for p in SQUADS[team1_name]:
+        # Create a unique label for the checkbox
+        label = f"{p['name']} ({p['role']})"
+        if st.checkbox(label, key=f"t1_{p['name']}"):
+            shortlist.append({"name": p['name'], "team": team1_name, "role": p['role']})
 
-# --- STEP 3: GENERATE ---
-if len(selected_display_names) >= 11:
-    if st.button("Generate All Valid Teams"):
-        # Filter the original data based on selection
-        shortlist = [p for p in match_players if f"{p['name']} ({p['team']} - {p['role']})" in selected_display_names]
-        
+with col2:
+    st.markdown(f"### {team2_name}")
+    for p in SQUADS[team2_name]:
+        label = f"{p['name']} ({p['role']})"
+        if st.checkbox(label, key=f"t2_{p['name']}"):
+            shortlist.append({"name": p['name'], "team": team2_name, "role": p['role']})
+
+# --- GENERATION SECTION ---
+st.divider()
+st.subheader(f"Step 2: Generate Combinations ({len(shortlist)} selected)")
+
+if len(shortlist) >= 11:
+    if st.button("Generate Teams"):
         valid_teams = []
-        limit = 100 # Stop at 100 teams to keep it fast
-        
+        # Calculate combinations (Limit to 100 for speed)
         for combo in combinations(shortlist, 11):
             roles = [p['role'] for p in combo]
+            # Rule: At least 1 of each role
             if all(roles.count(r) >= 1 for r in ['BAT', 'WK', 'AR', 'BOWL']):
                 valid_teams.append(combo)
-            if len(valid_teams) >= limit: break
-            
-        st.success(f"Found {len(valid_teams)} combinations!")
+            if len(valid_teams) >= 100: break
+        
+        st.success(f"Created {len(valid_teams)} probability teams!")
+        
+        # Displaying teams in a cleaner grid format
+        team_cols = st.columns(3) # Show 3 teams per row
         for i, team in enumerate(valid_teams):
-            with st.expander(f"Team {i+1}"):
-                for p in team:
-                    st.text(f"{p['name']} | {p['role']} | {p['team']}")
+            with team_cols[i % 3]:
+                with st.expander(f"📋 Team {i+1}", expanded=False):
+                    for p in team:
+                        st.write(f"• **{p['name']}** ({p['role']})")
 else:
-    st.info("Please select at least 11 players from the list above.")
+    st.info("Select at least 11 players by checking the boxes above.")
