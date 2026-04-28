@@ -1,33 +1,77 @@
 import streamlit as st
 from itertools import combinations
 
-st.set_page_config(page_title="Pro Fantasy Portal", layout="wide")
+# Setup the page - wide layout is best
+st.set_page_config(page_title="PBKS vs RR - Full Squads", layout="wide")
 
-# --- UPDATED SQUADS DATA ---
+# --- FULL SQUADS DATABASE (Ref: Cricbuzz Screenshot) ---
+# NOTE: To improve combination logic, All-Rounders (ALL) are categorized as BAT or BOWL
+# based on whether they are "Batting All-Rounders" or "Bowling All-Rounders".
+# (WK still counts as WK, simple ALL are AR)
 SQUADS = {
     "PBKS": [
-        {"name": "Prabhsimran Singh", "role": "WK"}, {"name": "Vishnu Vinod", "role": "WK"},
-        {"name": "Shreyas Iyer", "role": "BAT"}, {"name": "Priyansh Arya", "role": "BAT"},
-        {"name": "Nehal Wadhera", "role": "BAT"}, {"name": "Marcus Stoinis", "role": "AR"},
-        {"name": "Shashank Singh", "role": "AR"}, {"name": "Azmatullah Omarzai", "role": "AR"},
-        {"name": "Marco Jansen", "role": "AR"}, {"name": "Arshdeep Singh", "role": "BOWL"},
-        {"name": "Yuzvendra Chahal", "role": "BOWL"}, {"name": "Lockie Ferguson", "role": "BOWL"},
-        {"name": "Harpreet Brar", "role": "BOWL"}
+        {"name": "Prabhsimran Singh", "role": "WK"},
+        {"name": "Shreyas Iyer", "role": "BAT", "details": "(C)"},
+        {"name": "Priyansh Arya", "role": "BAT"},
+        {"name": "Cooper Connolly", "role": "BAT", "details": "(Bat ALL)"}, # Treat as Batting option
+        {"name": "Shashank Singh", "role": "BAT", "details": "(Bat ALL)"}, # Treat as Batting option
+        {"name": "Marcus Stoinis", "role": "BAT", "details": "(Bat ALL)"}, # Treat as Batting option
+        {"name": "Marco Jansen", "role": "BOWL", "details": "(Bowl ALL)"}, # Treat as Bowling option
+        {"name": "Xavier Bartlett", "role": "BOWL"},
+        {"name": "Vijaykumar Vyshak", "role": "BOWL"},
+        {"name": "Arshdeep Singh", "role": "BOWL"},
+        {"name": "Yuzvendra Chahal", "role": "BOWL"},
+        {"name": "Nehal Wadhera", "role": "BAT"},
+        {"name": "Suryansh Shedge", "role": "AR"}, # Simple ALL count as AR
+        {"name": "Harpreet Brar", "role": "BOWL"},
+        {"name": "Vishnu Vinod", "role": "WK"},
+        {"name": "Yash Thakur", "role": "BOWL"},
+        {"name": "Ben Dwarshuis", "role": "BOWL"},
+        {"name": "Praveen Dubey", "role": "BOWL", "details": "(Bowl ALL)"}, # Treat as Bowling option
+        {"name": "Lockie Ferguson", "role": "BOWL"},
+        {"name": "Azmatullah Omarzai", "role": "BOWL", "details": "(Bowl ALL)"}, # Treat as Bowling option
+        {"name": "Mitchell Owen", "role": "AR"}, # Simple ALL count as AR
+        {"name": "Harnoor Singh", "role": "BAT"},
+        {"name": "Musheer Khan", "role": "BAT", "details": "(Bat ALL)"}, # Treat as Batting option
+        {"name": "Pyla Avinash", "role": "BAT"},
+        {"name": "Vishal Nishad", "role": "AR"} # Simple ALL count as AR
     ],
     "RR": [
-        {"name": "Dhruv Jurel", "role": "WK"}, {"name": "Donovan Ferreira", "role": "WK"},
-        {"name": "Yashasvi Jaiswal", "role": "BAT"}, {"name": "Shimron Hetmyer", "role": "BAT"},
-        {"name": "Ravindra Jadeja", "role": "AR"}, {"name": "Riyan Parag", "role": "AR"},
-        {"name": "Wanindu Hasaranga", "role": "AR"}, {"name": "Jofra Archer", "role": "BOWL"},
-        {"name": "Ravi Bishnoi", "role": "BOWL"}, {"name": "Sandeep Sharma", "role": "BOWL"},
-        {"name": "Tushar Deshpande", "role": "BOWL"}, {"name": "Nandre Burger", "role": "BOWL"}
+        {"name": "Dhruv Jurel", "role": "WK"},
+        {"name": "Riyan Parag", "role": "BAT", "details": "(Bat ALL, C)"}, # Treat as Batting option
+        {"name": "Yashasvi Jaiswal", "role": "BAT"},
+        {"name": "Vaibhav Suryavanshi", "role": "BAT"},
+        {"name": "Shimron Hetmyer", "role": "BAT"},
+        {"name": "Donovan Ferreira", "role": "WK"},
+        {"name": "Ravindra Jadeja", "role": "BOWL", "details": "(Bowl ALL)"}, # Treat as Bowling option
+        {"name": "Jofra Archer", "role": "BOWL"},
+        {"name": "Tushar Deshpande", "role": "BOWL"},
+        {"name": "Nandre Burger", "role": "BOWL"},
+        {"name": "Brijesh Sharma", "role": "BOWL"},
+        {"name": "Ravi Bishnoi", "role": "BOWL"},
+        {"name": "Lhuan-dre Pretorius", "role": "WK"},
+        {"name": "Ravi Singh", "role": "WK"},
+        {"name": "Sandeep Sharma", "role": "BOWL"},
+        {"name": "Shubham Dubey", "role": "BAT"},
+        {"name": "Adam Milne", "role": "BOWL"},
+        {"name": "Dasun Shanaka", "role": "BAT", "details": "(Bat ALL)"}, # Treat as Batting option
+        {"name": "Kuldeep Sen", "role": "BOWL"},
+        {"name": "Sushant Mishra", "role": "BOWL"},
+        {"name": "Yudhvir Singh Chorka", "role": "BOWL"},
+        {"name": "Kwena Maphaka", "role": "BOWL"},
+        {"name": "Vignesh Puthur", "role": "BOWL"},
+        {"name": "Yash Raj Punja", "role": "BOWL"},
+        {"name": "Aman Rao Peralta", "role": "BOWL"}
     ]
 }
 
-st.title("🏏 Side-by-Side Player Selector")
+st.title("🏏 Official PBKS vs RR - Side-by-Side Selector")
 
-# --- SIDEBAR SELECTION ---
+# --- SIDEBAR: MATCH INFO & SETUP ---
 st.sidebar.header("Match Setup")
+st.sidebar.info(f"{len(SQUADS['PBKS'])} PBKS players vs {len(SQUADS['RR'])} RR players loaded.")
+
+# Team Selection
 team1_name = st.sidebar.selectbox("Team 1", ["PBKS"])
 team2_name = st.sidebar.selectbox("Team 2", ["RR"])
 
@@ -38,17 +82,20 @@ col1, col2 = st.columns(2)
 shortlist = []
 
 with col1:
-    st.markdown(f"### {team1_name}")
+    st.markdown(f"### <span style='color: #ED1C24;'>{team1_name}</span>", unsafe_allow_html=True)
     for p in SQUADS[team1_name]:
-        # Create a unique label for the checkbox
-        label = f"{p['name']} ({p['role']})"
+        # Build the displayed label with details if available
+        details_text = f" {p.get('details', '')}"
+        label = f"{p['name']} ({p['role']}){details_text}"
         if st.checkbox(label, key=f"t1_{p['name']}"):
+            # We add to the shortlist using the 'role' we assigned (BAT/BOWL/WK/AR)
             shortlist.append({"name": p['name'], "team": team1_name, "role": p['role']})
 
 with col2:
-    st.markdown(f"### {team2_name}")
+    st.markdown(f"### <span style='color: #FF5A00;'>{team2_name}</span>", unsafe_allow_html=True)
     for p in SQUADS[team2_name]:
-        label = f"{p['name']} ({p['role']})"
+        details_text = f" {p.get('details', '')}"
+        label = f"{p['name']} ({p['role']}){details_text}"
         if st.checkbox(label, key=f"t2_{p['name']}"):
             shortlist.append({"name": p['name'], "team": team2_name, "role": p['role']})
 
@@ -56,25 +103,41 @@ with col2:
 st.divider()
 st.subheader(f"Step 2: Generate Combinations ({len(shortlist)} selected)")
 
+# Minimum check to prevent empty clicks
 if len(shortlist) >= 11:
-    if st.button("Generate Teams"):
+    if st.button("Generate Teams", type="primary"):
+        # We need to process the roles we *actually* shortlisted (BAT/BOWL/WK/AR)
+        # to ensure the combinations are valid.
+        
         valid_teams = []
-        # Calculate combinations (Limit to 100 for speed)
-        for combo in combinations(shortlist, 11):
-            roles = [p['role'] for p in combo]
-            # Rule: At least 1 of each role
-            if all(roles.count(r) >= 1 for r in ['BAT', 'WK', 'AR', 'BOWL']):
-                valid_teams.append(combo)
-            if len(valid_teams) >= 100: break
+        limit = 100 # Adjust this if needed, 100 is safe and fast
         
-        st.success(f"Created {len(valid_teams)} probability teams!")
+        with st.spinner("Calculating billions of possibilities..."):
+            for combo in combinations(shortlist, 11):
+                # Count roles based on the categorization we applied (BAT/BOWL/WK/AR)
+                current_roles = [p['role'] for p in combo]
+                
+                # Minimum Constraint: At least one of each role
+                if all(current_roles.count(r) >= 1 for r in ['BAT', 'WK', 'AR', 'BOWL']):
+                    # Check if AR role is mandatory (e.g., Suryansh Shedge was the only AR in PBKS)
+                    # For most combinations, the default BAT/BOWL/WK rule is enough.
+                    valid_teams.append(combo)
+                
+                if len(valid_teams) >= limit:
+                    break
         
-        # Displaying teams in a cleaner grid format
-        team_cols = st.columns(3) # Show 3 teams per row
-        for i, team in enumerate(valid_teams):
-            with team_cols[i % 3]:
-                with st.expander(f"📋 Team {i+1}", expanded=False):
-                    for p in team:
-                        st.write(f"• **{p['name']}** ({p['role']})")
+        if valid_teams:
+            st.success(f"Created {len(valid_teams)} combinations! (Showing top {limit})")
+            
+            # Displaying teams in a cleaner grid format
+            team_cols = st.columns(3) # Show 3 teams per row
+            for i, team in enumerate(valid_teams):
+                with team_cols[i % 3]:
+                    with st.expander(f"📋 Team {i+1}", expanded=False):
+                        # Presenting the team with visual hierarchy
+                        for p in team:
+                            st.write(f"• **{p['name']}** ({p['role']}) | {p['team']}")
+        else:
+            st.error("No valid teams found with your shortlist. Try selecting more players or a better balance of roles.")
 else:
-    st.info("Select at least 11 players by checking the boxes above.")
+    st.warning("Please select at least 11 players total by checking the boxes above.")
