@@ -1,51 +1,68 @@
 import streamlit as st
 from itertools import combinations
 
-st.set_page_config(page_title="Fantasy Team Builder", layout="wide")
-st.title("🏏 My Fantasy Team Generator")
+st.set_page_config(page_title="IPL Team Builder", layout="wide")
 
-# 1. Simple Data Entry
-st.sidebar.header("Step 1: Enter Squads")
-raw_data = st.sidebar.text_area("Paste players (Name, Team, Role) one per line. Example: V. Kohli, RCB, BAT", 
-                                height=200)
+# --- SAVED SQUADS DATABASE ---
+SQUADS = {
+    "PBKS": [
+        {"name": "Prabhsimran Singh", "role": "WK"}, {"name": "Vishnu Vinod", "role": "WK"},
+        {"name": "Shreyas Iyer", "role": "BAT"}, {"name": "Priyansh Arya", "role": "BAT"},
+        {"name": "Nehal Wadhera", "role": "BAT"}, {"name": "Marcus Stoinis", "role": "AR"},
+        {"name": "Shashank Singh", "role": "AR"}, {"name": "Azmatullah Omarzai", "role": "AR"},
+        {"name": "Marco Jansen", "role": "AR"}, {"name": "Arshdeep Singh", "role": "BOWL"},
+        {"name": "Yuzvendra Chahal", "role": "BOWL"}, {"name": "Lockie Ferguson", "role": "BOWL"},
+        {"name": "Harpreet Brar", "role": "BOWL"}
+    ],
+    "RR": [
+        {"name": "Dhruv Jurel", "role": "WK"}, {"name": "Donovan Ferreira", "role": "WK"},
+        {"name": "Yashasvi Jaiswal", "role": "BAT"}, {"name": "Shimron Hetmyer", "role": "BAT"},
+        {"name": "Ravindra Jadeja", "role": "AR"}, {"name": "Riyan Parag", "role": "AR"},
+        {"name": "Wanindu Hasaranga", "role": "AR"}, {"name": "Jofra Archer", "role": "BOWL"},
+        {"name": "Ravi Bishnoi", "role": "BOWL"}, {"name": "Sandeep Sharma", "role": "BOWL"},
+        {"name": "Tushar Deshpande", "role": "BOWL"}, {"name": "Nandre Burger", "role": "BOWL"}
+    ]
+}
 
-# 2. Parsing the data
-players = []
-if raw_data:
-    for line in raw_data.split('\n'):
-        if ',' in line:
-            parts = line.split(',')
-            players.append({"name": parts[0].strip(), "team": parts[1].strip(), "role": parts[2].strip().upper()})
+st.title("🏏 Smart Fantasy Portal")
 
-if players:
-    # 3. Shortlisting
-    st.header("Step 2: Shortlist Players (11 - 50)")
-    names = [p['name'] for p in players]
-    shortlist_names = st.multiselect("Select players for this match:", names)
-    
-    # 4. Combination Logic
-    if len(shortlist_names) >= 11:
-        st.success(f"Shortlisted {len(shortlist_names)} players.")
-        if st.button("Generate All Probability Teams"):
-            selected_players = [p for p in players if p['name'] in shortlist_names]
+# --- STEP 1: SELECT TEAMS ---
+st.sidebar.header("Match Selection")
+team1 = st.sidebar.selectbox("Select Team 1", ["PBKS"])
+team2 = st.sidebar.selectbox("Select Team 2", ["RR"])
+
+# Combine the players from both selected teams
+match_players = []
+for p in SQUADS[team1]:
+    match_players.append({"name": p['name'], "team": team1, "role": p['role']})
+for p in SQUADS[team2]:
+    match_players.append({"name": p['name'], "team": team2, "role": p['role']})
+
+# --- STEP 2: SHORTLIST ---
+st.header(f"Shortlist Players: {team1} vs {team2}")
+player_names = [f"{p['name']} ({p['team']} - {p['role']})" for p in match_players]
+
+selected_display_names = st.multiselect("Pick players you think will perform:", player_names)
+
+# --- STEP 3: GENERATE ---
+if len(selected_display_names) >= 11:
+    if st.button("Generate All Valid Teams"):
+        # Filter the original data based on selection
+        shortlist = [p for p in match_players if f"{p['name']} ({p['team']} - {p['role']})" in selected_display_names]
+        
+        valid_teams = []
+        limit = 100 # Stop at 100 teams to keep it fast
+        
+        for combo in combinations(shortlist, 11):
+            roles = [p['role'] for p in combo]
+            if all(roles.count(r) >= 1 for r in ['BAT', 'WK', 'AR', 'BOWL']):
+                valid_teams.append(combo)
+            if len(valid_teams) >= limit: break
             
-            valid_teams = []
-            count = 0
-            # Warning: combinations can be huge, we limit to first 500 for speed
-            for combo in combinations(selected_players, 11):
-                roles = [p['role'] for p in combo]
-                # Rules: At least 1 of each
-                if all(roles.count(r) >= 1 for r in ['BAT', 'WK', 'AR', 'BOWL']):
-                    valid_teams.append(combo)
-                    count += 1
-                if count >= 100: break # Show first 100 teams to prevent crashing
-            
-            st.write(f"Found {count} valid combinations (showing top 100):")
-            for i, team in enumerate(valid_teams):
-                with st.expander(f"Team {i+1}"):
-                    for p in team:
-                        st.write(f"- {p['name']} ({p['team']}) [{p['role']}]")
-    else:
-        st.warning("Please select at least 11 players.")
+        st.success(f"Found {len(valid_teams)} combinations!")
+        for i, team in enumerate(valid_teams):
+            with st.expander(f"Team {i+1}"):
+                for p in team:
+                    st.text(f"{p['name']} | {p['role']} | {p['team']}")
 else:
-    st.info("Please enter your squad list in the sidebar to start!")
+    st.info("Please select at least 11 players from the list above.")
