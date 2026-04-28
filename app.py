@@ -1,11 +1,10 @@
 import streamlit as st
 from itertools import combinations
 from fpdf import FPDF
-import base64
 
-st.set_page_config(page_title="Pro Fantasy Portal", layout="wide")
+st.set_page_config(page_title="PBKS vs RR - Side Selector", layout="wide")
 
-# --- SQUAD DATA ---
+# --- DATABASE ---
 SQUADS = {
     "PBKS": [
         {"name": "Prabhsimran Singh", "role": "WK"}, {"name": "Shreyas Iyer", "role": "BAT"},
@@ -39,68 +38,70 @@ SQUADS = {
     ]
 }
 
+# --- PDF LOGIC ---
 def create_pdf(teams):
     pdf = FPDF()
     pdf.add_page()
-    pdf.set_font("Arial", 'B', 16)
-    pdf.cell(200, 10, txt="My Fantasy Teams - PBKS vs RR", ln=True, align='C')
-    pdf.ln(10)
-    pdf.set_font("Arial", size=10)
-    
+    pdf.set_font("Arial", 'B', 14)
+    pdf.cell(200, 10, txt="FANTASY TEAMS - PBKS VS RR", ln=True, align='C')
+    pdf.ln(5)
     for i, team in enumerate(teams):
-        pdf.set_font("Arial", 'B', 11)
-        pdf.cell(0, 10, txt=f"TEAM {i+1}", ln=True)
-        pdf.set_font("Arial", size=10)
-        player_list = ", ".join([f"{p['name']} ({p['role']})" for p in team])
-        pdf.multi_cell(0, 8, txt=player_list)
+        pdf.set_font("Arial", 'B', 10)
+        pdf.cell(0, 8, txt=f"TEAM {i+1}:", ln=True)
+        pdf.set_font("Arial", size=9)
+        names = ", ".join([f"{p['name']} ({p['role']})" for p in team])
+        pdf.multi_cell(0, 6, txt=names)
         pdf.ln(2)
-        pdf.cell(0, 0, '', 'T')
-        pdf.ln(2)
-        
     return pdf.output(dest='S').encode('latin-1')
 
-st.title("🏏 Fantasy Portal with PDF Export")
+# --- SIDEBAR ---
+st.sidebar.title("⚙️ Match Setup")
+match_name = st.sidebar.selectbox("Select Match", ["PBKS vs RR"])
+st.sidebar.write("Step 1: Check your favorites.")
+st.sidebar.write("Step 2: Hit Generate.")
+st.sidebar.write("Step 3: Save PDF.")
 
-# --- SELECTION ---
+# --- MAIN SCREEN ---
+st.title("🏏 Player Shortlist")
 col1, col2 = st.columns(2)
 shortlist = []
+
 with col1:
-    st.header("PBKS")
+    st.markdown("### 🔴 PBKS Squad")
     for p in SQUADS["PBKS"]:
-        if st.checkbox(f"{p['name']} ({p['role']})", key=f"pbks_{p['name']}"):
-            shortlist.append(p)
-with col2:
-    st.header("RR")
-    for p in SQUADS["RR"]:
-        if st.checkbox(f"{p['name']} ({p['role']})", key=f"rr_{p['name']}"):
+        if st.checkbox(f"{p['name']} ({p['role']})", key=f"p_{p['name']}"):
             shortlist.append(p)
 
-# --- GENERATE ---
+with col2:
+    st.markdown("### 🔵 RR Squad")
+    for p in SQUADS["RR"]:
+        if st.checkbox(f"{p['name']} ({p['role']})", key=f"r_{p['name']}"):
+            shortlist.append(p)
+
+st.divider()
+
+# --- RESULTS ---
 if len(shortlist) >= 11:
-    if st.button("Generate & Save Teams", type="primary"):
+    if st.button("🚀 Generate 100 Teams", type="primary"):
         valid_teams = []
         for combo in combinations(shortlist, 11):
             roles = [p['role'] for p in combo]
             if all(roles.count(r) >= 1 for r in ['BAT', 'WK', 'AR', 'BOWL']):
                 valid_teams.append(combo)
-            if len(valid_teams) >= 100:
-                break
+            if len(valid_teams) >= 100: break
         
-        if valid_teams:
-            st.success(f"Generated {len(valid_teams)} teams!")
-            
-            # PDF Download Button
-            pdf_data = create_pdf(valid_teams)
-            st.download_button(
-                label="📥 Download Teams as PDF",
-                data=pdf_data,
-                file_name="my_fantasy_teams.pdf",
-                mime="application/pdf"
-            )
-            
-            # Display Preview
-            for i, team in enumerate(valid_teams[:10]):
-                with st.expander(f"Team {i+1} Preview"):
-                    st.write(", ".join([p['name'] for p in team]))
+        st.success(f"Generated {len(valid_teams)} combinations!")
+        
+        # Download Link
+        pdf_bytes = create_pdf(valid_teams)
+        st.download_button("📥 Download PDF Report", data=pdf_bytes, file_name="teams.pdf", mime="application/pdf")
+        
+        # Grid Display
+        grid = st.columns(3)
+        for i, team in enumerate(valid_teams):
+            with grid[i % 3]:
+                with st.expander(f"Team {i+1}"):
+                    for p in team:
+                        st.write(f"- {p['name']}")
 else:
-    st.info("Select 11 players to begin.")
+    st.info("Pick at least 11 players from the squads above.")
